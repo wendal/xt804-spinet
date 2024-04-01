@@ -31,6 +31,11 @@ function spi804.send_resp(cmdid, ack, data)
     sys.publish("SPI804")
 end
 
+function spi804.send_cmd(cmd, data)
+    table.insert(spi804.txqueue, {cmd, data})
+    sys.publish("SPI804")
+end
+
 function spi804.ent(event, ptr, tlen)
     log.info(TAG, event, ptr, tlen)
     if event == 0 then
@@ -77,6 +82,9 @@ function spi804.main_task()
                 local item = table.remove(spi804.txqueue, 1)
                 local cmd, data = table.unpack(item)
                 -- 写入CMD ID, 这个是本地的id, 不是远程的id
+                if not data then
+                    data = ""
+                end
                 txbuff:seek(0)
                 txbuff:pack("<BBH", 0xA5, 0, #data + 4) -- TODO 计算checksum
                 txbuff.pack("<HH", cmd, spi804.txid)
