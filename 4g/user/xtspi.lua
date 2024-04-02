@@ -13,7 +13,7 @@ function xtspi.init(id, pin_cs)
 end
 
 function xtspi.wrtie_reg(addr, buff, len)
-    -- log.info("xtspi", "写寄存器", string.format("%02X", addr), len)
+    -- log.info("xtspi", "写寄存器", string.format("%02X", addr), buff:toStr(buff:used(), 4):toHex())
     xtspi.PIN_CS(0)
     spi.send(xtspi.id, string.char((addr & 0xFF) | 0x80))
     spi.send(xtspi.id, buff, len)
@@ -35,10 +35,12 @@ end
 
 function xtspi.wrtie_data(addr, buff, len)
     if len < 1 then return end
-    for i = 1, len - 4, 4 do
+    for i = 0, len - 4, 4 do
         xtspi.wrtie_reg(addr, buff, 4)
+        buff:seek(4, zbuff.SEEK_CUR)
     end
     xtspi.wrtie_reg(addr + 0x10, buff, 4)
+    buff:seek(4, zbuff.SEEK_CUR)
 end
 
 function xtspi.read_data(addr, buff, len)
@@ -80,9 +82,11 @@ function xtspi.write_xcmd(cmd, buff, len)
     tmpbuff[2] = xtspi.txid & 0xff
     tmpbuff[3] = (xtspi.txid >> 8) & 0xff
     if len > 0 then
+        log.info("xcmd", "分段发送", len)
         xtspi.wrtie_reg(addr, tmpbuff, 4)
         xtspi.wrtie_data(addr, buff, len)
     else
+        log.info("xcmd", "没有附加数据,直接发送结尾")
         xtspi.wrtie_reg(addr + 0x10, tmpbuff, 4)
     end
     return txid

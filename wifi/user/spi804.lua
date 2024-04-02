@@ -7,8 +7,8 @@ spi804.txid = 1
 spi804.cmds = {}
 local TAG = "spi804"
 
-spi804.cmds[0xff] = function(rxbuff, cmdid, len)
-    spi804.send_resp(cmdid)
+spi804.cmds[0xff] = function(rxbuff, len)
+    spi804.send_resp(rxbuff)
 end
 
 function spi804.dft_on_data(rxbuff, len)
@@ -17,19 +17,17 @@ function spi804.dft_on_data(rxbuff, len)
     local cmdid = rxbuff[6] + (rxbuff[7] << 8)
     -- log.debug(TAG, "收到命令", cmd, cmdid)
     if spi804.cmds[cmd] then
-        sys.taskInit(spi804.cmds[cmd], rxbuff, cmdid, len)
+        pcall(spi804.cmds[cmd], rxbuff, len)
     else
         log.info(TAG, "没有找到对应的命令", cmd)
-        sys.taskInit(spi804.cmds[0xff], rxbuff, cmdid, len)
+        pcall(spi804.cmds[0xff], rxbuff, len)
     end
 end
 
-function spi804.send_resp(cmdid, ack, data)
+function spi804.send_resp(rxbuff, ack, ext)
     local cmd = ack and 0x81 or 0x82
-    if not ack and not data then
-        data = pack.pack("<H", cmdid)
-    end
-    table.insert(spi804.txqueue, {ack and 0x81 or 0x82, data})
+    local data = rxbuff:toStr(4, 4)
+    table.insert(spi804.txqueue, {ack and 0x81 or 0x82, data, ext})
     sys.publish("SPI804")
 end
 
@@ -51,7 +49,7 @@ function spi804.ent(event, ptr, tlen)
         spislave.read(spi804.id, ptr, rxbuff, tlen)
         log.info(TAG, "数据读取完成,前8个字节分别是", rxbuff:toStr(0, 8):toHex())
         local magic = rxbuff[0]
-        local len = rxbuff[2] + rxbuff[3] << 8
+        local len = rxbuff[2] + (rxbuff[3] << 8)
         if not magic or magic ~= 0xA5 then
             log.info(TAG, "数据格式错误, magic对不上", magic)
             return
@@ -81,15 +79,26 @@ function spi804.main_task()
             if spislave.ready(spi804.id) then
                 local txbuff = spi804.txbuff
                 local item = table.remove(spi804.txqueue, 1)
-                local cmd, data = table.unpack(item)
+                local cmd, data, ext = table.unpack(item)
                 -- 写入CMD ID, 这个是本地的id, 不是远程的id
                 if not data then
                     data = ""
                 end
+                local len = #data + 4
+                if ext then
+                    if type(ext) == "string" then
+                        len = len + #ext
+                    else
+                        len = len + ext:used()
+                    end
+                end
                 txbuff:seek(0)
-                txbuff:pack("<bbH", 0xA5, 0, #data + 4) -- TODO 计算checksum
+                txbuff:pack("<bbH", 0xA5, 0, len) -- TODO 计算checksum
                 txbuff:pack("<HH", cmd, spi804.txid)
                 txbuff:copy(nil, data)
+                if ext then
+                    txbuff:copy(nil, ext)
+                end
                 while txbuff:used() % 4 ~= 0 do
                     -- 补齐到4字节
                     txbuff:copy(nil, "\x00")

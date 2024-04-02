@@ -8,7 +8,7 @@ local spi804 = require("spi804")
 --------------------------------------------------
 
 -- ping命令
-spi804.cmds[0x01] = function(rxbuff, cmdid, len)
+spi804.cmds[0x01] = function(rxbuff, len)
     log.info("cmds", "收到ping命令")
     local tmp = {}
     if _G.VERSION then
@@ -25,21 +25,21 @@ spi804.cmds[0x01] = function(rxbuff, cmdid, len)
         tmp.stamac = wlan.getMac()
         tmp.apmac = wlan.getMac(1)
     end
-    spi804.send_resp(cmdid, true, (json.encode(tmp)))
+    spi804.send_resp(rxbuff, true, (json.encode(tmp)))
 end
 
 -- 重启命令
-spi804.cmds[0x02] = function(rxbuff, cmdid, len)
-    spi804.send_resp(cmdid, true, _G.VERSION)
+spi804.cmds[0x02] = function(rxbuff, len)
+    spi804.send_resp(rxbuff, true, _G.VERSION)
     sys.timerStart(rtos.reboot, 1000)
 end
 -- 获取内存信息
-spi804.cmds[0x02] = function(rxbuff, cmdid, len)
+spi804.cmds[0x02] = function(rxbuff, len)
     local meminfo = json.encode({
         lua={rtos.meminfo()},
         sys={rtos.meminfo()}
     })
-    spi804.send_resp(cmdid, true, meminfo)
+    spi804.send_resp(rxbuff, true, meminfo)
 end
 
 --------------------------------------------------
@@ -48,29 +48,28 @@ end
 
 if fota then
     -- fota初始化
-    spi804.cmds[0x20] = function(rxbuff, cmdid, len)
+    spi804.cmds[0x20] = function(rxbuff, len)
         local ret = fota.init()
         if ret then
-            spi804.send_resp(cmdid, true)
+            spi804.send_resp(rxbuff, true)
         else
-            spi804.send_resp(cmdid, false, tostring(ret))
+            spi804.send_resp(rxbuff, false, tostring(ret))
         end
     end
-    spi804.cmds[0x21] = function(rxbuff, cmdid, len)
-        rxbuff:del(0, 4)
+    spi804.cmds[0x21] = function(rxbuff, len)
         local ret = fota.run(rxbuff)
         if ret then
-            spi804.send_resp(cmdid, true)
+            spi804.send_resp(rxbuff, true)
         else
-            spi804.send_resp(cmdid, false, tostring(ret))
+            spi804.send_resp(rxbuff, false, tostring(ret))
         end
     end
-    spi804.cmds[0x22] = function(rxbuff, cmdid, len)
+    spi804.cmds[0x22] = function(rxbuff, len)
         local succ, fotaDone = fota.isDone()
         if succ then
-            spi804.send_resp(cmdid, true)
+            spi804.send_resp(rxbuff, true)
         else
-            spi804.send_resp(cmdid, false)
+            spi804.send_resp(rxbuff, false)
         end
     end
 end
@@ -78,19 +77,19 @@ end
 -- 接下来是几条luatos指令
 
 -- 执行lua代码(字符串形式)
-spi804.cmds[0x40] = function(rxbuff, cmdid, len)
-    rxbuff:del(0, 4)
-    local str = rxbuff:query()
+spi804.cmds[0x40] = function(rxbuff, len)
+    local str = rxbuff:toStr(8, len - 4)
+    -- log.info("cmds", "lua字符串??", rxbuff:toStr(0, len + 4):toHex(), rxbuff:used())
+    -- log.info("cmds", "lua字符串??", str)
     local ret, result = pcall(function()
         return load(str)()
     end)
-    spi804.send_resp(cmdid, ret, tostring(result))
+    spi804.send_resp(rxbuff, ret, tostring(result))
 end
 
 -- 执行函数调用
-spi804.cmds[0x41] = function(rxbuff, cmdid, len)
-    rxbuff:del(0, 4)
-    local str = rxbuff:query()
+spi804.cmds[0x41] = function(rxbuff, len)
+    local str = rxbuff:toStr(8, len - 4)
     local ret, result = pcall(function()
         local jdata = json.decode(str)
         if jdata then
@@ -111,7 +110,7 @@ spi804.cmds[0x41] = function(rxbuff, cmdid, len)
             end
         end
     end)
-    spi804.send_resp(cmdid, ret, result and tostring(result) or "")
+    spi804.send_resp(rxbuff, ret, result and tostring(result) or "")
 end
 
 local function spinet_subscribe(topic, args)
@@ -120,19 +119,17 @@ local function spinet_subscribe(topic, args)
 end
 
 -- 订阅事件
-spi804.cmds[0x42] = function(rxbuff, cmdid, len)
-    rxbuff:del(0, 4)
-    local topic = rxbuff:query()
+spi804.cmds[0x42] = function(rxbuff, len)
+    local topic = rxbuff:toStr(8, len - 4)
     sys.subscribe(topic, function(...)
         spinet_subscribe(topic, {...})
     end)
-    spi804.send_resp(cmdid, true)
+    spi804.send_resp(rxbuff, true)
 end
 
 -- 接收事件, 一般不会用到
-spi804.cmds[0x42] = function(rxbuff, cmdid, len)
-    rxbuff:del(0, 4)
-    local jdata = json.decode(rxbuff:query())
+spi804.cmds[0x42] = function(rxbuff, len)
+    local jdata = json.decode(rxbuff:toStr(8, len - 4))
     sys.publish(jdata[1], table.unpack(jdata[2] or {}))
-    spi804.send_resp(cmdid, true)
+    spi804.send_resp(rxbuff, true)
 end
