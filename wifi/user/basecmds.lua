@@ -10,7 +10,22 @@ local spi804 = require("spi804")
 -- ping命令
 spi804.cmds[0x01] = function(rxbuff, cmdid, len)
     log.info("cmds", "收到ping命令")
-    spi804.send_resp(cmdid, true, _G.VERSION)
+    local tmp = {}
+    if _G.VERSION then
+        tmp.version = _G.VERSION
+    end
+    if _G.PROJECT then
+        tmp.project = _G.PROJECT
+    end
+    if mcu then
+        tmp.unique_id = mcu.unique_id():toHex()
+        tmp.ticks = mcu.ticks()
+    end
+    if wlan then
+        tmp.stamac = wlan.getMac()
+        tmp.apmac = wlan.getMac(1)
+    end
+    spi804.send_resp(cmdid, true, (json.encode(tmp)))
 end
 
 -- 重启命令
