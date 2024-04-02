@@ -9,6 +9,7 @@ local spi804 = require("spi804")
 
 -- ping命令
 spi804.cmds[0x01] = function(rxbuff, cmdid, len)
+    log.info("cmds", "收到ping命令")
     spi804.send_resp(cmdid, true, _G.VERSION)
 end
 

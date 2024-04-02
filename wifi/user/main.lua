@@ -19,6 +19,7 @@ sys.taskInit(function()
     sys.wait(500)
     spi804 = require "spi804"
     require "basecmds"
+    spi804.init(2)
     sys.taskInit(spi804.main_task)
 end)
 

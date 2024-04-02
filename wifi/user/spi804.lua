@@ -13,7 +13,9 @@ end
 
 function spi804.dft_on_data(rxbuff, len)
     -- 开始进行命令判断
-    local cmd, cmdid = rxbuff:unpack("<HH")
+    local cmd = rxbuff[4] + (rxbuff[5] << 8)
+    local cmdid = rxbuff[6] + (rxbuff[7] << 8)
+    -- log.debug(TAG, "收到命令", cmd, cmdid)
     if spi804.cmds[cmd] then
         sys.taskInit(spi804.cmds[cmd], rxbuff, cmdid, len)
     else
@@ -24,7 +26,7 @@ end
 
 function spi804.send_resp(cmdid, ack, data)
     local cmd = ack and 0x81 or 0x82
-    if not ack then
+    if not ack and not data then
         data = pack.pack("<H", cmdid)
     end
     table.insert(spi804.txqueue, {ack and 0x81 or 0x82, data})
@@ -37,7 +39,7 @@ function spi804.send_cmd(cmd, data)
 end
 
 function spi804.ent(event, ptr, tlen)
-    log.info(TAG, event, ptr, tlen)
+    -- log.info(TAG, event, ptr, tlen)
     if event == 0 then
         log.info(TAG, "cmd数据", ptr, tlen)
     end
@@ -46,22 +48,20 @@ function spi804.ent(event, ptr, tlen)
     end
     if tlen and tlen > 4 then
         local rxbuff = spi804.rxbuff
-        spislave.read(spi804.id, ptr, rbuff, tlen)
-        log.info(TAG, "数据读取完成,前4个字节分别是", rbuff[0], rbuff[1], rbuff[2], rbuff[3])
-        local _, magic, checksum, len = rbuff:unpack("<BBH")
+        spislave.read(spi804.id, ptr, rxbuff, tlen)
+        log.info(TAG, "数据读取完成,前8个字节分别是", rxbuff:toStr(0, 8):toHex())
+        local magic = rxbuff[0]
+        local len = rxbuff[2] + rxbuff[3] << 8
         if not magic or magic ~= 0xA5 then
-            log.info(TAG, "数据格式错误, magic对不上")
+            log.info(TAG, "数据格式错误, magic对不上", magic)
             return
         end
         if len > 1496 then
             log.info(TAG, "数据长度有问题, 超过限制", len)
         end
         -- TODO 计算校验和
-        rxbuff:del(1,4)
         -- 传递给上层
-        if spi804.on_data then
-            spi804.on_data(rxbuff, len)
-        end
+        spi804.on_data(rxbuff, len)
     end
 end
 
@@ -75,6 +75,7 @@ end
 
 function spi804.main_task()
     while 1 do
+        -- log.info("spi主循环")
         if #spi804.txqueue > 0 then
             -- 首先, 看看能不能写
             if spislave.ready(spi804.id) then
@@ -86,10 +87,14 @@ function spi804.main_task()
                     data = ""
                 end
                 txbuff:seek(0)
-                txbuff:pack("<BBH", 0xA5, 0, #data + 4) -- TODO 计算checksum
-                txbuff.pack("<HH", cmd, spi804.txid)
-                txbuff:copy(data)
-                spislave.write(spi804.id, txbuff, txbuff:used())
+                txbuff:pack("<bbH", 0xA5, 0, #data + 4) -- TODO 计算checksum
+                txbuff:pack("<HH", cmd, spi804.txid)
+                txbuff:copy(nil, data)
+                while txbuff:used() % 4 ~= 0 do
+                    -- 补齐到4字节
+                    txbuff:copy(nil, "\x00")
+                end
+                spislave.write(spi804.id, 0, txbuff, txbuff:used())
                 spi804.txid = spi804.txid + 1
             else
                 sys.wait(3) -- 还不空闲, 先等一会
