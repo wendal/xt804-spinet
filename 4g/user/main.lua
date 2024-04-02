@@ -30,6 +30,7 @@ sys.taskInit(function()
         result = xtspi.write_xcmd(0x01, nil, 0)
         log.info("xcmd", "发送结果", result)
         sys.wait(100)
+        rxbuff:seek(0)
         result = xtspi.read_xcmd(0x00, rxbuff)
         if result then
             log.info("xcmd","接收结果", result, rxbuff:query(0, 16):toHex())

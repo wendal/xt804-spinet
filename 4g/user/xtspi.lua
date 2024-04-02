@@ -21,6 +21,7 @@ function xtspi.wrtie_reg(addr, buff, len)
 end
 
 function xtspi.read_reg(addr, buff, len)
+    -- log.info("寄存器读取", addr, buff, len)
     -- 尝试读取
     if not len or len < 1 or len > 4 then
         return
@@ -69,6 +70,7 @@ function xtspi.write_xcmd(cmd, buff, len)
     tmpbuff[1] = 0 -- 暂时不算checksum
     tmpbuff[2] = (len + 4) & 0xff
     tmpbuff[3] = ((len + 4) >> 8) & 0xff
+    local txid = xtspi.txid
     xtspi.txid = xtspi.txid + 1
     xtspi.wrtie_reg(addr, tmpbuff, 4)
 
@@ -83,7 +85,7 @@ function xtspi.write_xcmd(cmd, buff, len)
     else
         xtspi.wrtie_reg(addr + 0x10, tmpbuff, 4)
     end
-    return true
+    return txid
 end
 
 function xtspi.read_xcmd(addr, buff)
@@ -101,6 +103,7 @@ function xtspi.read_xcmd(addr, buff)
     end
 
     -- 尝试读取
+    tmpbuff:seek(0)
     xtspi.read_reg(addr, buff, 4)
     if buff[0] ~= 0xA5 then
         xtspi.read_reg(addr + 1, buff, 4) -- 将数据清空
