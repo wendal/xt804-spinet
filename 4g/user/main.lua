@@ -22,38 +22,47 @@ sys.taskInit(function()
     local PIN_CS = gpio.setup(8, 1, gpio.PULLUP)
     log.info("xcmd", "SPI初始化完成", result)
     xtspi = require "xtspi"
+    ucmd = require "ucmd"
     xtspi.init(SPI_ID, PIN_CS)
 
     local rxbuff = zbuff.create(1500)
-    local txbuff = zbuff.create(1400)
+    local txbuff = zbuff.create(1500)
 
-    txbuff:seek(0)
-    txbuff:copy(nil, "wlan.init()  return wlan.connect(\"luato1234\", \"12341234\", 1)")
-    local len = txbuff:used()
-    txbuff:seek(0)
-    result = xtspi.write_xcmd(0x40, txbuff, len)
-    sys.wait(100)
+    -- txbuff:seek(0)
+    -- txbuff:copy(nil, "wlan.init()  return wlan.connect(\"luato1234\", \"12341234\", 1)")
+    -- local len = txbuff:used()
+    -- txbuff:seek(0)
+    -- result = xtspi.write_xcmd(0x40, txbuff, len)
+    -- sys.wait(100)
     
+    sys.taskInit(ucmd.main_task)
+
     while true do
         -- 测试一下收发
         -- result = xtspi.write_xcmd(0x01, nil, 0)
-        txbuff:seek(0)
-        txbuff:copy(nil, "print(" .. tostring(os.time()) .. ")")
-        local len = txbuff:used()
-        txbuff:seek(0)
-        result = xtspi.write_xcmd(0x40, txbuff, len)
-        log.info("xcmd", "发送结果", result)
-        sys.wait(100)
-        rxbuff:seek(0)
-        result = xtspi.read_xcmd(0x00, rxbuff)
-        if result then
-            log.info("xcmd","接收结果", result, rxbuff:query(0, 16):toHex())
-            local len = rxbuff[2] + rxbuff[3] * 256 - 8
-            if len > 0 then
-                log.info("xcmd","返回的数据是", rxbuff:toStr(12, len))
-            end
+        -- txbuff:seek(0)
+        -- txbuff:copy(nil, "print(" .. tostring(os.time()) .. ")")
+        -- local len = txbuff:used()
+        -- txbuff:seek(0)
+        -- result = xtspi.write_xcmd(0x40, txbuff, len)
+        -- log.info("xcmd", "发送结果", result)
+        -- sys.wait(100)
+        -- rxbuff:seek(0)
+        -- result = xtspi.read_xcmd(0x00, rxbuff)
+        -- if result then
+        --     log.info("xcmd","接收结果", result, rxbuff:query(0, 16):toHex())
+        --     local len = rxbuff[2] + rxbuff[3] * 256 - 8
+        --     if len > 0 then
+        --         log.info("xcmd","返回的数据是", rxbuff:toStr(12, len))
+        --     end
+        -- end
+        print("1----------------------------")
+        local data = ucmd.ping()
+        if data then
+            log.info("ucmd", "心跳回复", data)
         end
-        sys.wait(1000)
+        print("2----------------------------")
+        sys.wait(5000)
     end
 end)
 

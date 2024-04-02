@@ -15,7 +15,7 @@ function spi804.dft_on_data(rxbuff, len)
     -- 开始进行命令判断
     local cmd = rxbuff[4] + (rxbuff[5] << 8)
     local cmdid = rxbuff[6] + (rxbuff[7] << 8)
-    -- log.debug(TAG, "收到命令", cmd, cmdid)
+    log.debug(TAG, "收到命令", cmd, cmdid)
     if spi804.cmds[cmd] then
         pcall(spi804.cmds[cmd], rxbuff, len)
     else
