@@ -1,6 +1,7 @@
 local xtspi = {}
 
-xtspi.tmpbuff = zbuff.create(4)
+xtspi.tmpbuff = zbuff.create(8)
+xtspi.rxbuff = zbuff.create(8)
 xtspi.txid = 1
 
 function xtspi.init(id, pin_cs)
@@ -94,15 +95,13 @@ end
 
 function xtspi.read_xcmd(addr, buff)
     -- 首先, 读取一下是否真有的数据
-    local tmpbuff = xtspi.tmpbuff
+    local tmpbuff = xtspi.rxbuff
     tmpbuff:seek(0)
     tmpbuff[0] = 0
     tmpbuff[1] = 0
-    xtspi.read_reg(0x02, tmpbuff, 2)
-    local rlen = tmpbuff[0] | tmpbuff[1] << 8
-    -- log.info("xcmd", "可读取长度是", rlen)
-    if rlen < 4 then
-        log.info("xcmd", "待读取数据不够")
+    xtspi.read_reg(0x06, tmpbuff, 2)
+    if (tmpbuff[0] & 0x01) ~= 1 then
+        -- log.info("xcmd", "无数据可读")
         return
     end
 
