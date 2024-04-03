@@ -34,7 +34,7 @@ spi804.cmds[0x02] = function(rxbuff, len)
     sys.timerStart(rtos.reboot, 1000)
 end
 -- 获取内存信息
-spi804.cmds[0x02] = function(rxbuff, len)
+spi804.cmds[0x03] = function(rxbuff, len)
     local meminfo = json.encode({
         lua={rtos.meminfo()},
         sys={rtos.meminfo()}
@@ -57,7 +57,7 @@ if fota then
         end
     end
     spi804.cmds[0x21] = function(rxbuff, len)
-        local ret = fota.run(rxbuff)
+        local ret = fota.run(rxbuff, 8, len - 4)
         if ret then
             spi804.send_resp(rxbuff, true)
         else
