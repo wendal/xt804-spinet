@@ -40,6 +40,8 @@ function xtspi.wrtie_data(addr, buff, len)
         xtspi.wrtie_reg(addr, buff, 4)
         buff:seek(4, zbuff.SEEK_CUR)
     end
+    -- xtspi.wrtie_reg(addr, buff, len - 4)
+    -- buff:seek(len - 4, zbuff.SEEK_CUR)
     xtspi.wrtie_reg(addr + 0x10, buff, 4)
     buff:seek(4, zbuff.SEEK_CUR)
 end

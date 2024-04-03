@@ -25,45 +25,32 @@ sys.taskInit(function()
     ucmd = require "ucmd"
     xtspi.init(SPI_ID, PIN_CS)
 
-    local rxbuff = zbuff.create(1500)
-    local txbuff = zbuff.create(1500)
-
-    -- txbuff:seek(0)
-    -- txbuff:copy(nil, "wlan.init()  return wlan.connect(\"luato1234\", \"12341234\", 1)")
-    -- local len = txbuff:used()
-    -- txbuff:seek(0)
-    -- result = xtspi.write_xcmd(0x40, txbuff, len)
-    -- sys.wait(100)
-    
     sys.taskInit(ucmd.main_task)
 
-    while true do
-        -- 测试一下收发
-        -- result = xtspi.write_xcmd(0x01, nil, 0)
-        -- txbuff:seek(0)
-        -- txbuff:copy(nil, "print(" .. tostring(os.time()) .. ")")
-        -- local len = txbuff:used()
-        -- txbuff:seek(0)
-        -- result = xtspi.write_xcmd(0x40, txbuff, len)
-        -- log.info("xcmd", "发送结果", result)
-        -- sys.wait(100)
-        -- rxbuff:seek(0)
-        -- result = xtspi.read_xcmd(0x00, rxbuff)
-        -- if result then
-        --     log.info("xcmd","接收结果", result, rxbuff:query(0, 16):toHex())
-        --     local len = rxbuff[2] + rxbuff[3] * 256 - 8
-        --     if len > 0 then
-        --         log.info("xcmd","返回的数据是", rxbuff:toStr(12, len))
-        --     end
-        -- end
-        print("1----------------------------")
-        local data = ucmd.ping()
-        if data then
-            log.info("ucmd", "心跳回复", data)
-        end
-        print("2----------------------------")
-        sys.wait(5000)
-    end
+    ucmd.ping()
+    log.info("ucmd", "sta mac地址是", ucmd.call("wlan.getMac"))
+    -- ucmd.subscribe("IP_READY")
+    -- ucmd.subscribe("IP_LOSE")
+    ucmd.subscribe("WLAN_STATUS")
+    sys.wait(500)
+    ucmd.eval("print(os.time())")
+    sys.wait(500)
+    ucmd.call("wlan.init", 100)
+    sys.wait(500)
+    ucmd.call("wlan.connect", 500, "luatos1234", "12341234", 1)
+end)
+
+
+-- sys.subscribe("IP_READY",function(id, ip)
+--     log.info("ucmd", "IP_READY!!!", id, ip)
+-- end)
+
+-- sys.subscribe("IP_LOSE",function(id, ip)
+--     log.info("ucmd", "IP_READY!!!", id, ip)
+-- end)
+
+sys.subscribe("WLAN_STATUS",function(status)
+    log.info("ucmd", "WLAN_STATUS", status)
 end)
 
 -- 结尾总是这一句哦

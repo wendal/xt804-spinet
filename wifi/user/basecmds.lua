@@ -84,13 +84,13 @@ spi804.cmds[0x40] = function(rxbuff, len)
     local ret, result = pcall(function()
         return load(str)()
     end)
-    spi804.send_resp(rxbuff, ret, tostring(result))
+    spi804.send_resp(rxbuff, ret, result and json.encode(result))
 end
 
 -- 执行函数调用
 spi804.cmds[0x41] = function(rxbuff, len)
     local str = rxbuff:toStr(8, len - 4)
-    local ret, result = pcall(function()
+    local result = {pcall(function()
         local jdata = json.decode(str)
         if jdata then
             local func_name = jdata.func
@@ -109,26 +109,37 @@ spi804.cmds[0x41] = function(rxbuff, len)
                 return func(table.unpack(args))
             end
         end
-    end)
-    spi804.send_resp(rxbuff, ret, result and tostring(result) or "")
+    end)}
+    local ret = table.remove(result, 1)
+    spi804.send_resp(rxbuff, ret, result and json.encode(result))
 end
 
-local function spinet_subscribe(topic, args)
-    local jdata = json.encode({topic, args})
+local function spinet_subscribe(topic, ...)
+    log.info("spi804", "收到订阅", topic, ...)
+    local jdata = json.encode({topic, ...})
     spi804.send_cmd(0x43, jdata)
 end
+
+local topics = {}
 
 -- 订阅事件
 spi804.cmds[0x42] = function(rxbuff, len)
     local topic = rxbuff:toStr(8, len - 4)
+    if topics[topic] then
+        -- 已经在订阅了,不需要重复订阅
+        spi804.send_resp(rxbuff, true)
+        return
+    end
+    log.info("spi804", "subscribe", topic)
     sys.subscribe(topic, function(...)
-        spinet_subscribe(topic, {...})
+        spinet_subscribe(topic, ...)
     end)
+    topics[topic] = true
     spi804.send_resp(rxbuff, true)
 end
 
 -- 接收事件, 一般不会用到
-spi804.cmds[0x42] = function(rxbuff, len)
+spi804.cmds[0x43] = function(rxbuff, len)
     local jdata = json.decode(rxbuff:toStr(8, len - 4))
     sys.publish(jdata[1], table.unpack(jdata[2] or {}))
     spi804.send_resp(rxbuff, true)
