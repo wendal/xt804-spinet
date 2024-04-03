@@ -38,6 +38,9 @@ sys.taskInit(function()
     ucmd.call("wlan.init", 100)
     sys.wait(500)
     ucmd.call("wlan.connect", 500, "luatos1234", "12341234", 1)
+    sys.wait(10000)
+    local info = ucmd.call("wlan.getInfo")
+    log.info("wlan信息", info and json.encode(info))
 end)
 
 
