@@ -64,14 +64,21 @@ sys.taskInit(function()
     ulwip.setup(ulwip_aindex, (mac:fromHex()), netif_write_out)
     ulwip.reg(ulwip_aindex)
     ulwip.updown(ulwip_aindex, true)
-    ulwip.dft(ulwip_aindex)
+    ulwip.link(ulwip_aindex, true)
+    -- ulwip.dft(ulwip_aindex)
     ulwip.ip(ulwip_aindex, "192.168.1.129", "255.255.255.0", "192.168.1.1")
 
     log.info("socket", "sta", socket.localIP(ulwip_aindex))
     -- ulwip.dhcp(ulwip_aindex, true)
     sys.wait(100)
-    local code = http.request("GET", "http://192.168.1.15:8000/index.html", nil, nil, {adapter=ulwip_aindex,debug=true,timeout=5000}).wait()
-    log.info(code)
+    while 1 do
+        local code, headers = http.request("GET", "http://192.168.1.5:8000/index.html", nil, nil, {adapter=ulwip_aindex,timeout=5000}).wait()
+        log.info("http", code, json.encode(headers))
+        sys.wait(1000)
+        code, headers = http.request("GET", "http://httpbin.air32.cn/index.html", nil, nil, {adapter=ulwip_aindex,timeout=5000}).wait()
+        log.info("http", code, json.encode(headers))
+        sys.wait(1000)
+    end
 end)
 
 
