@@ -15,11 +15,22 @@ if wdt then
     sys.timerLoopStart(wdt.feed, 3000)--3s喂一次狗
 end
 
+function macpkg_up(tp, buff)
+    log.info("wlan", "MAC包-->上位机", tp, buff:used())
+    local tmp = zbuff.create(buff:used())
+    tmp:pack("<HH", tp, buff:used())
+    tmp:copy(nil, buff)
+    buff:seek(0) -- 马上释放
+    log.info("上行MAC封包", tmp:query():toHex())
+    spi804.send_cmd(0x10, tmp)
+end
+
 sys.taskInit(function()
     sys.wait(500)
     spi804 = require "spi804"
     require "basecmds"
     spi804.init(2)
+    wlanraw.setup(0, macpkg_up)
     sys.taskInit(spi804.main_task)
 end)
 

@@ -144,3 +144,19 @@ spi804.cmds[0x43] = function(rxbuff, len)
     sys.publish(jdata[1], table.unpack(jdata[2] or {}))
     spi804.send_resp(rxbuff, true)
 end
+
+-- 接收数据包
+if wlanraw then
+    spi804.cmds[0x10] = function(rxbuff, len)
+        local id = rxbuff[8] + rxbuff[9] * 256
+        local dlen = rxbuff[10] + rxbuff[11] * 256
+        log.info("wlanraw", "写入STA的MAC包", dlen)
+        wlanraw.write(0, rxbuff, 12, dlen)
+    end
+    spi804.cmds[0x11] = function(rxbuff, len)
+        local id = rxbuff[8] + rxbuff[9] * 256
+        local dlen = rxbuff[10] + rxbuff[11] * 256
+        log.info("wlanraw", "写入AP的MAC包", dlen)
+        wlanraw.write(1, rxbuff, 12, dlen)
+    end
+end

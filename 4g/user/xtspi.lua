@@ -84,7 +84,7 @@ function xtspi.write_xcmd(cmd, buff, len)
     tmpbuff[2] = txid & 0xff
     tmpbuff[3] = (txid >> 8) & 0xff
     if len > 0 then
-        -- log.info("xcmd", "分段发送", len)
+        log.info("xcmd", "分段发送", buff:toStr(0, len):toHex())
         xtspi.wrtie_reg(addr, tmpbuff, 4)
         xtspi.wrtie_data(addr, buff, len)
     else
