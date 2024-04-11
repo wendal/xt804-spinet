@@ -153,8 +153,8 @@ function ucmd.subscribe(topic, timeout)
 end
 
 function ucmd.macpkg(id, data)
-    log.info("ucmd", "下行mac数据包", data:toHex())
-    local len = (#data + 4 + 3) & 0xFC
+    log.info("ucmd", "下行mac数据包", #data)
+    local len = (#data + 4 + 3) & 0xFFFC
     local tmp = zbuff.create(len)
     tmp:pack("<HH", id, #data)
     tmp:write(data)

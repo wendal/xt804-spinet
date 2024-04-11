@@ -84,7 +84,7 @@ function xtspi.write_xcmd(cmd, buff, len)
     tmpbuff[2] = txid & 0xff
     tmpbuff[3] = (txid >> 8) & 0xff
     if len > 0 then
-        log.info("xcmd", "分段发送", buff:toStr(0, len):toHex())
+        -- log.info("xcmd", "分段发送", buff:toStr(0, len):toHex())
         xtspi.wrtie_reg(addr, tmpbuff, 4)
         xtspi.wrtie_data(addr, buff, len)
     else
@@ -115,10 +115,10 @@ function xtspi.read_xcmd(addr, buff)
         -- log.info("xtspi", "read_xcmd: invalid header")
         return
     end
-    local len = (buff[2] | buff[3] << 8)
+    local len = buff[2] + (buff[3] << 8)
     if len > 1500 - 4 then
         xtspi.read_reg(addr + 0x10, buff, 4) -- 将数据清空
-        log.info("xtspi", "read_xcmd: invalid len")
+        log.info("xtspi", "read_xcmd: invalid len", len, buff:toStr(0, 4):toHex())
         return
     end
     xtspi.read_data(addr, buff, len)

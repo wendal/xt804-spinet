@@ -17,11 +17,13 @@ end
 
 function macpkg_up(tp, buff)
     log.info("wlan", "MAC包-->上位机", tp, buff:used())
-    local tmp = zbuff.create(buff:used())
+    local len = (buff:used() + 3 + 4) & 0xfffc
+    local tmp = zbuff.create(len // 1)
+    tmp:seek(0)
     tmp:pack("<HH", tp, buff:used())
     tmp:copy(nil, buff)
     buff:seek(0) -- 马上释放
-    log.info("上行MAC封包", tmp:query():toHex())
+    -- log.info("上行MAC封包", tmp:query():toHex())
     spi804.send_cmd(0x10, tmp)
 end
 
