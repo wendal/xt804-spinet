@@ -61,13 +61,14 @@ sys.taskInit(function()
     log.info("wlan信息", info and json.encode(info))
 
     -- 然后初始化ulwip
-    ulwip.setup(ulwip_aindex, (mac:fromHex()), netif_write_out)
+    ulwip.setup(ulwip_aindex, (mac:fromHex()), netif_write_out, {zbuff_out=true})
     ulwip.reg(ulwip_aindex)
     ulwip.updown(ulwip_aindex, true)
     ulwip.link(ulwip_aindex, true)
-    -- ulwip.dft(ulwip_aindex)
-    ulwip.ip(ulwip_aindex, "192.168.1.129", "255.255.255.0", "192.168.1.1")
-
+    -- ulwip.ip(ulwip_aindex, "192.168.1.129", "255.255.255.0", "192.168.1.1")
+    ulwip.dhcp(ulwip_aindex, true)
+    -- socket.setDNS(ulwip_aindex, 1, "192.168.1.1")
+    sys.waitUntil("IP_READY", 2500)
     log.info("socket", "sta", socket.localIP(ulwip_aindex))
     -- ulwip.dhcp(ulwip_aindex, true)
     sys.wait(100)

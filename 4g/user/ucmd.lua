@@ -7,7 +7,7 @@ function ucmd.on_resp(rxbuff, len)
     -- 首先, 解析出里面的cmd和cmdid
     local cmd = rxbuff[4]
     local cmdid = rxbuff[6] + rxbuff[7] * 256
-    log.info("ucmd", cmd, "cmdid", cmdid)
+    -- log.info("ucmd", cmd, "cmdid", cmdid)
     if cmd == 0x81 or cmd == 0x82 then
         cmdid = rxbuff[6 + 4] + rxbuff[7 + 4] * 256
         -- log.info("回应的cmdid", cmdid)
@@ -153,11 +153,16 @@ function ucmd.subscribe(topic, timeout)
 end
 
 function ucmd.macpkg(id, data)
-    log.info("ucmd", "下行mac数据包", #data)
+    -- log.info("ucmd", "下行mac数据包", id, #data)
     local len = (#data + 4 + 3) & 0xFFFC
     local tmp = zbuff.create(len)
     tmp:pack("<HH", id, #data)
-    tmp:write(data)
+    if type(data) == "string" then
+        tmp:write(data)
+    else
+        tmp:copy(nil, data)
+    end
+    -- log.info("ucmd", "下行mac包头部", (tmp:toStr(0, 24):toHex()))
     tmp:seek(0)
     local result = xtspi.write_xcmd(0x10, tmp, len)
     sys.publish("UCMD_EVT", result)
