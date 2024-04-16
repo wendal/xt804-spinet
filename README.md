@@ -18,6 +18,7 @@
 |SPI0_MOSI/GPIO  | PB10 | 主->从,数据下行|
 |SPI0_MISO       | PB11 | 主<-从,数据上行|
 |SPI0_CLK        | PB06 | SPI时钟|
+|GPIO22          | RESET| 复位, 拉低复位, 暂时不控制不接|
 
 ## 目录说明
 
@@ -25,6 +26,21 @@
 2. wifi 目录, 给Air601用的脚本
 3. soc 目录, 测试固件, 搭配脚本刷机
 4. doc 目录, 文档
+
+## 进展
+
+* [x] SPI双向通信
+* [x] 命令式通信框架
+* [x] 基础命令
+* [x] STA模式
+* [x] MAC包收发
+* [x] TCP/UDP通信
+* [x] DNS解析
+* [x] DHCP客户端
+* [x] TLS/HTTPS/MQTTS通信
+* [ ] AP模式
+* [ ] DHCP服务器端
+* [ ] DNS服务器端
 
 ## LICENSE
 
