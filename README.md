@@ -38,7 +38,7 @@
 * [x] DNS解析
 * [x] DHCP客户端
 * [x] TLS/HTTPS/MQTTS通信
-* [ ] AP模式
+* [x] AP模式
 * [ ] DHCP服务器端
 * [ ] DNS服务器端
 
