@@ -9,7 +9,7 @@ VERSION = "1.0.1"
 
 sys = require("sys")
 require("sysplus")
-
+udpsrv = require("udpsrv")
 
 local ulwip_aindex = socket.LWIP_STA
 local apindex = socket.LWIP_AP
@@ -79,12 +79,16 @@ function ulwip_ap(ap_mac)
     ulwip.reg(apindex)
     ulwip.updown(apindex, true)
     ulwip.link(apindex, true)
-    ulwip.ip(ulwip_aindex, "192.168.4.1", "255.255.255.0", "192.168.4.1")
+    ulwip.ip(apindex, "192.168.4.1", "255.255.255.0", "192.168.4.1")
 
     sys.wait(100)
+    dhcpd = udpsrv.create(67, "dhcpd_inc", apindex)
     while 1 do
-        log.info("ulwip", "等待STA连接")
-        sys.wait(1000)
+        log.info("ulwip", "等待DHCP数据")
+        local result, data = sys.waitUntil("dhcpd_inc", 1000)
+        if result then
+            log.info("ulwip", "收到dhcp数据包", data:toHex())
+        end
     end
 end
 
