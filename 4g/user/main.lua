@@ -31,7 +31,8 @@ function ucmd_user_cb(cmd, rxbuff, len)
     if cmd == 0x10 then
         local id = rxbuff[8] + rxbuff[9] * 256
         local dlen = rxbuff[10] + rxbuff[11] * 256
-        log.info("ucmd", "收到mac包", dlen)
+        log.info("ucmd", "收到mac包", dlen, rxbuff:toStr(0, 32):toHex())
+        -- ulwip.input(apindex, rxbuff, dlen, 12)
         ulwip.input(id == 0 and ulwip_aindex or apindex, rxbuff, dlen, 12)
     end
 end
@@ -56,7 +57,6 @@ function ulwip_sta(sta_mac)
     -- socket.setDNS(ulwip_aindex, 1, "192.168.1.1")
     sys.waitUntil("IP_READY", 2500)
     log.info("socket", "sta", socket.localIP(ulwip_aindex))
-    -- ulwip.dhcp(ulwip_aindex, true)
     sys.wait(100)
     while 1 do
         -- local code, headers = http.request("GET", "http://192.168.1.5:8000/index.html", nil, nil, {adapter=ulwip_aindex,timeout=5000}).wait()
@@ -82,14 +82,28 @@ function ulwip_ap(ap_mac)
     ulwip.ip(apindex, "192.168.4.1", "255.255.255.0", "192.168.4.1")
 
     sys.wait(100)
-    dhcpd = udpsrv.create(67, "dhcpd_inc", apindex)
-    while 1 do
-        log.info("ulwip", "等待DHCP数据")
-        local result, data = sys.waitUntil("dhcpd_inc", 1000)
-        if result then
-            log.info("ulwip", "收到dhcp数据包", data:toHex())
-        end
+    dhcpsrv = require("dhcpsrv")
+    local opts = {
+        adapter = apindex,
+        gw = {192, 168, 4, 1},
+        mask = {255, 255, 255, 0},
+        dns = {192, 168, 4, 1},
+        ip_start = 100,
+        ip_end = 200
+    }
+    local dhcpd = dhcpsrv.create(opts)
+    while true do
+        sys.wait(1000)
+        -- log.info("当前客户端数量", #dhcpd.clients)
     end
+    -- dhcpd = udpsrv.create(67, "dhcpd_inc", apindex)
+    -- while 1 do
+    --     log.info("ulwip", "等待DHCP数据")
+    --     local result, data = sys.waitUntil("dhcpd_inc", 1000)
+    --     if result then
+    --         log.info("ulwip", "收到dhcp数据包", data:toHex())
+    --     end
+    -- end
 end
 
 sys.taskInit(function()
@@ -99,6 +113,10 @@ sys.taskInit(function()
     sys.taskInit(ucmd.main_task, ucmd_user_cb)
 
     ucmd.ping()
+    sys.wait(100)
+    ucmd.call("wlan.init", 100)
+    sys.wait(100)
+
     local sta_mac = ucmd.call("wlan.getMac") or "C81234567890"
     log.info("ucmd", "sta mac地址是", sta_mac)
     local ap_mac = ucmd.call("wlan.getMac", 100, 1) or "C81234567830"
@@ -106,9 +124,6 @@ sys.taskInit(function()
 
     ucmd.subscribe("WLAN_STATUS")
     sys.wait(100)
-
-    ucmd.call("wlan.init", 100)
-    sys.wait(500)
 
     -- STA测试
     -- sys.taskInit(ulwip_sta, sta_mac)

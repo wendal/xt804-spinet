@@ -16,7 +16,7 @@ if wdt then
 end
 
 function macpkg_up(tp, buff)
-    log.info("wlan", "MAC包-->上位机", tp, buff:used())
+    -- log.info("wlan", "MAC包-->上位机", tp, buff:used())
     local len = (buff:used() + 3 + 4) & 0xfffc
     local tmp = zbuff.create(len // 1)
     tmp:seek(0)

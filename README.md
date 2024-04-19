@@ -39,8 +39,9 @@
 * [x] DHCP客户端
 * [x] TLS/HTTPS/MQTTS通信
 * [x] AP模式
-* [ ] DHCP服务器端
+* [x] DHCP服务器端
 * [ ] DNS服务器端
+* [ ] **NAPT** 路由协议
 
 ## LICENSE
 

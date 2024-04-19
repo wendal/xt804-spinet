@@ -111,6 +111,7 @@ spi804.cmds[0x41] = function(rxbuff, len)
         end
     end)}
     local ret = table.remove(result, 1)
+    -- log.debug("spi804", "执行函数结果", ret, result and json.encode(result))
     spi804.send_resp(rxbuff, ret, result and json.encode(result))
 end
 
@@ -150,13 +151,13 @@ if wlanraw then
     spi804.cmds[0x10] = function(rxbuff, len)
         local id = rxbuff[8] + rxbuff[9] * 256
         local dlen = rxbuff[10] + rxbuff[11] * 256
-        log.info("wlanraw", "写入STA的MAC包", dlen)
-        wlanraw.write(0, rxbuff, 12, dlen)
+        -- log.info("wlanraw", "写入STA的MAC包", dlen)
+        wlanraw.write(id, rxbuff, 12, dlen)
     end
-    spi804.cmds[0x11] = function(rxbuff, len)
-        local id = rxbuff[8] + rxbuff[9] * 256
-        local dlen = rxbuff[10] + rxbuff[11] * 256
-        log.info("wlanraw", "写入AP的MAC包", dlen)
-        wlanraw.write(1, rxbuff, 12, dlen)
-    end
+    -- spi804.cmds[0x11] = function(rxbuff, len)
+    --     local id = rxbuff[8] + rxbuff[9] * 256
+    --     local dlen = rxbuff[10] + rxbuff[11] * 256
+    --     -- log.info("wlanraw", "写入AP的MAC包", dlen)
+    --     wlanraw.write(1, rxbuff, 12, dlen)
+    -- end
 end
