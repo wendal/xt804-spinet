@@ -3,7 +3,7 @@ local dhcpsrv = {}
 
 local udpsrv = require("udpsrv")
 
-local TAG = "dhcp.srv"
+local TAG = "dhcpsrv"
 
 ----
 -- 参考地址
@@ -38,17 +38,19 @@ local function dhcp_decode(buff)
     local opt = {}
     while buff:len() > buff:used() do
         local tag = buff:read(1):byte()
-        local len = buff:read(1):byte()
-        if tag == 0xFF or len == 0 then
-            break
+        if tag ~= 0 then
+            local len = buff:read(1):byte()
+            if tag == 0xFF or len == 0 then
+                break
+            end
+            local data = buff:read(len)
+            if tag == 53 then
+                -- 53: DHCP Message Type
+                dst.msgtype = data:byte()
+            end
+            table.insert(opt, {tag, data})
+            -- log.info(TAG, "tag", tag, "data", data:toHex())
         end
-        local data = buff:read(len)
-        if tag == 53 then
-            -- 53: DHCP Message Type
-            dst.msgtype = data:byte()
-        end
-        table.insert(opt, {tag, data})
-        log.info(TAG, "tag", tag, "data", data:toHex())
     end
     if dst.msgtype == nil then
         return -- 没有解析到msgtype，直接返回
@@ -137,7 +139,7 @@ local function dhcp_send_x(srv, pkg, client, msgtype)
     table.insert(pkg.opts, {53, string.char(msgtype)})
     table.insert(pkg.opts, {1, string.char(srv.opts.mark[1], srv.opts.mark[2], srv.opts.mark[3], srv.opts.mark[4])})
     table.insert(pkg.opts, {3, string.char(srv.opts.gw[1], srv.opts.gw[2], srv.opts.gw[3], srv.opts.gw[4])})
-    table.insert(pkg.opts, {51, "\x00\x00\x29\x00"}) -- 7200秒, 大概
+    table.insert(pkg.opts, {51, "\x00\x00\x1E\x00"}) -- 7200秒, 大概
     table.insert(pkg.opts, {54, string.char(srv.opts.gw[1], srv.opts.gw[2], srv.opts.gw[3], srv.opts.gw[4])})
     table.insert(pkg.opts, {6, string.char(srv.opts.gw[1], srv.opts.gw[2], srv.opts.gw[3], srv.opts.gw[4])})
 
@@ -147,7 +149,7 @@ local function dhcp_send_x(srv, pkg, client, msgtype)
     if 4 == msgtype then
         dst = string.format("%d.%d.%d.%d", srv.opts.gw[1], srv.opts.gw[2], srv.opts.gw[3], client.ip)
     end
-    log.info(TAG, "发送", msgtype, dst, buff:query():toHex())
+    -- log.info(TAG, "发送", msgtype, dst, buff:query():toHex())
     srv.udp:send(buff, dst, 68)
 end
 
@@ -164,7 +166,7 @@ local function dhcp_handle_discover(srv, pkg)
     -- 看看是不是已经分配了ip
     for _, client in pairs(srv.clients) do
         if client.mac == mac then
-            log.info("DHCP Server", "发现已经分配的mac地址, send offer")
+            log.info(TAG, "发现已经分配的mac地址, send offer")
             dhcp_send_offer(srv, pkg, client)
             return
         end
@@ -172,7 +174,7 @@ local function dhcp_handle_discover(srv, pkg)
     -- TODO 清理已经过期的IP分配记录
     -- 分配一个新的ip
     if #srv.clients >= (srv.opts.ip_end - srv.opts.ip_start) then
-        log.info("DHCP Server", "没有可分配的ip")
+        log.info(TAG, "没有可分配的ip了")
         return
     end
     local ip = nil
@@ -183,7 +185,7 @@ local function dhcp_handle_discover(srv, pkg)
         end
     end
     if ip == nil then
-        log.info("DHCP Server", "没有可分配的ip")
+        log.info(TAG, "没有可分配的ip了")
         return
     end
     log.info(TAG, "分配ip", mac:toHex(), string.format("%d.%d.%d.%d", srv.opts.gw[1], srv.opts.gw[2], srv.opts.gw[3], ip))
@@ -215,7 +217,7 @@ end
 local function dhcp_pkg_handle(srv, pkg)
     -- 进行基本的检查
     if pkg.magic ~= 0x63825363 then
-        log.warn("DHCP Server", "dhcp数据包的magic不对劲,忽略该数据包", pkg.magic)
+        log.warn(TAG, "dhcp数据包的magic不对劲,忽略该数据包", pkg.magic)
         return
     end
     if pkg.op ~= 1 then
@@ -223,28 +225,28 @@ local function dhcp_pkg_handle(srv, pkg)
         return
     end
     if pkg.htype ~= 1 or pkg.hlen ~= 6 then
-        log.warn("DHCP Server", "htype/hlen 不认识, 忽略该数据包")
+        log.warn(TAG, "htype/hlen 不认识, 忽略该数据包")
         return
     end
     -- 看看是不是能处理的类型, 当前只处理discover/request
     if pkg.msgtype == 1 or pkg.msgtype == 3 then
     else
-        log.warn("DHCP Server", "msgtype不是discover/request, 忽略该数据包", pkg.msgtype)
+        log.warn(TAG, "msgtype不是discover/request, 忽略该数据包", pkg.msgtype)
         return
     end
     -- 检查一下mac地址是否合法
     local mac = pkg.chaddr:sub(1, pkg.hlen)
     if mac == "\0\0\0\0\0\0" or mac == "\xFF\xFF\xFF\xFF\xFF\xFF" then
-        log.warn("DHCP Server", "mac地址为空, 忽略该数据包")
+        log.warn(TAG, "mac地址为空, 忽略该数据包")
         return
     end
 
     -- 处理discover包
     if pkg.msgtype == 1 then
-        log.info("是discover包")
+        log.info(TAG, "是discover包")
         dhcp_handle_discover(srv, pkg)
     elseif pkg.msgtype == 3 then
-        log.info("是request包")
+        log.info(TAG, "是request包")
         dhcp_handle_request(srv, pkg)
     end
     -- TODO 处理结束, 打印一下客户的列表?
@@ -255,11 +257,11 @@ local function dhcp_task(srv)
         -- log.info("ulwip", "等待DHCP数据")
         local result, data = sys.waitUntil(srv.udp_topic, 1000)
         if result then
-            log.info("ulwip", "收到dhcp数据包", data:toHex())
+            -- log.info("ulwip", "收到dhcp数据包", data:toHex())
             -- 解析DHCP数据包
             local pkg = dhcp_decode(zbuff.create(#data, data))
             if pkg then
-                dhcp_print_pkg(pkg)
+                -- dhcp_print_pkg(pkg)
                 dhcp_pkg_handle(srv, pkg)
             end
         end
@@ -270,7 +272,6 @@ function dhcpsrv.create(opts)
     if not opts then
         opts = {}
     end
-    srv.opts = opts
     srv.udp_topic = "dhcpd_inc"
     -- 补充参数
     if not opts.mark then
@@ -278,6 +279,9 @@ function dhcpsrv.create(opts)
     end
     if not opts.gw then
         opts.gw = {192, 168, 4, 1}
+    end
+    if not opts.dns then
+        opts.dns = opts.gw
     end
     if not opts.ip_start then
         opts.ip_start = 100
@@ -287,8 +291,9 @@ function dhcpsrv.create(opts)
     end
 
     srv.clients = {}
+    srv.opts = opts
 
-    srv.udp = udpsrv.create(67, srv.udp_topic, socket.LWIP_AP)
+    srv.udp = udpsrv.create(67, srv.udp_topic, opts.adapter)
     srv.task = sys.taskInit(dhcp_task, srv)
     return srv
 end
