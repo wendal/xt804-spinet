@@ -9,6 +9,7 @@ VERSION = "1.0.1"
 
 sys = require("sys")
 require("sysplus")
+dnsproxy = require("dnsproxy")
 udpsrv = require("udpsrv")
 
 local ulwip_aindex = socket.LWIP_STA
@@ -92,6 +93,7 @@ function ulwip_ap(ap_mac)
         ip_end = 200
     }
     local dhcpd = dhcpsrv.create(opts)
+    dnsproxy.setup(apindex, nil)
     while true do
         sys.wait(1000)
         -- log.info("当前客户端数量", #dhcpd.clients)
