@@ -7,13 +7,19 @@ VERSION = "1.0.1"
 本demo分成主从两部分, 这里是SPI主机, Air780E
 ]]
 
+mobile.ipv6(false)
+
 sys = require("sys")
 require("sysplus")
 dnsproxy = require("dnsproxy")
 udpsrv = require("udpsrv")
+macippkg = require("macippkg")
 
 local ulwip_aindex = socket.LWIP_STA
 local apindex = socket.LWIP_AP
+
+napt2 = require("napt2")
+napt2.setup(socket.LWIP_GP, apindex)
 
 if wdt then
     --添加硬狗防止程序卡死，在支持的设备上启用这个功能
@@ -25,21 +31,49 @@ local SPI_ID = 0
 local result = spi.setup(SPI_ID, nil, 0 , 0, 8, 25600 * 1000)
 local PIN_CS = gpio.setup(8, 1, gpio.PULLUP)
 log.info("xcmd", "SPI初始化完成", result)
-xtspi = require "xtspi"
-ucmd = require "ucmd"
+xtspi = require("xtspi")
+ucmd = require("ucmd")
+
 
 function ucmd_user_cb(cmd, rxbuff, len)
     if cmd == 0x10 then
         local id = rxbuff[8] + rxbuff[9] * 256
         local dlen = rxbuff[10] + rxbuff[11] * 256
-        log.info("ucmd", "收到mac包", dlen, rxbuff:toStr(0, 32):toHex())
+        -- log.info("ucmd", "收到mac包", dlen, rxbuff:toStr(0, 32):toHex())
         -- ulwip.input(apindex, rxbuff, dlen, 12)
         ulwip.input(id == 0 and ulwip_aindex or apindex, rxbuff, dlen, 12)
+        
+        if id == 1 then
+            -- 调试用, 打印mac包
+            -- rxbuff:seek(12)
+            -- macippkg.decode(rxbuff, true)
+            napt2.inet_input(rxbuff, 12)
+        end
     end
 end
 
 function netif_write_out(id, data)
-    ucmd.macpkg(id == 0 and ulwip_aindex or apindex, data)
+    if id == ulwip_aindex then
+        ucmd.macpkg(0, data)
+    elseif id == apindex then
+        -- 分析下行数据
+        data:seek(0)
+        macippkg.decode(data, true)
+        data:seek(#data)
+        ucmd.macpkg(1, data)
+    elseif id == socket.LWIP_GP then
+        -- 4G数据
+        -- log.info("ulwip", "收到4G数据")
+
+        -- local tmpbuff = zbuff.create(#data + 14) -- 添加MAC包头的14字节
+        -- tmpbuff:seek(14)
+        -- tmpbuff:copy(nil, data)
+        -- tmpbuff:seek(0)
+        -- tmpbuff[12] = 0x08
+        -- tmpbuff[13] = 0x00
+        -- napt2.iter_input(tmpbuff, 0)
+    end
+    
 end
 
 function ulwip_sta(sta_mac)
@@ -73,6 +107,15 @@ function ulwip_sta(sta_mac)
 end
 
 function ulwip_ap(ap_mac)
+    
+    -- 这里等待4G就绪, 然后再创建AP
+    log.info("ulwip", "等待4G联网")
+    sys.waitUntil("IP_READY")
+
+    -- 初始化ulwip的GPRS部分
+    ulwip.setup(socket.LWIP_GP, "\0\0\0\0\0\0", netif_write_out, {zbuff_out=true, reverse=true})
+
+    log.info("ulwip", "创建AP")
     ucmd.call("wlan.createAP", 500, "luatos-ap", "12341234")
 
     -- 然后初始化ulwip
@@ -96,20 +139,13 @@ function ulwip_ap(ap_mac)
     dnsproxy.setup(apindex, nil)
     while true do
         sys.wait(1000)
-        -- log.info("当前客户端数量", #dhcpd.clients)
     end
-    -- dhcpd = udpsrv.create(67, "dhcpd_inc", apindex)
-    -- while 1 do
-    --     log.info("ulwip", "等待DHCP数据")
-    --     local result, data = sys.waitUntil("dhcpd_inc", 1000)
-    --     if result then
-    --         log.info("ulwip", "收到dhcp数据包", data:toHex())
-    --     end
-    -- end
 end
 
 sys.taskInit(function()
-    sys.wait(500)
+    -- sys.wait(500)
+    -- sys.waitUntil("IP_READY")
+
     xtspi.init(SPI_ID, PIN_CS)
 
     sys.taskInit(ucmd.main_task, ucmd_user_cb)
@@ -137,6 +173,13 @@ end)
 sys.subscribe("WLAN_STATUS",function(status)
     log.info("ucmd", "WLAN_STATUS", status)
 end)
+
+-- 打印一下内存状态
+-- sys.timerLoopStart(function()
+--     log.info("lua", rtos.meminfo())
+--     log.info("sys", rtos.meminfo("sys"))
+--     -- log.info("psram", rtos.meminfo("psram"))
+-- end, 2000)
 
 -- 结尾总是这一句哦
 sys.run()

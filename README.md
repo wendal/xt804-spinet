@@ -41,7 +41,11 @@
 * [x] AP模式
 * [x] DHCP服务器端
 * [x] DNS代理
-* [ ] **NAPT** 路由协议
+* [x] **NAPT** 路由协议
+
+## 版本记录
+
+看文件 [版本记录](CHANGELOG.md)
 
 ## LICENSE
 

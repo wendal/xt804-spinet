@@ -153,7 +153,7 @@ function ucmd.subscribe(topic, timeout)
 end
 
 function ucmd.macpkg(id, data)
-    -- log.info("ucmd", "下行mac数据包", id, #data)
+    log.info("ucmd", "下行mac数据包", id, #data)
     local len = (#data + 4 + 3) & 0xFFFC
     local tmp = zbuff.create(len)
     tmp:pack("<HH", id, #data)
@@ -162,10 +162,12 @@ function ucmd.macpkg(id, data)
     else
         tmp:copy(nil, data)
     end
-    -- log.info("ucmd", "下行mac包头部", (tmp:toStr(0, 24):toHex()))
+    -- log.info("ucmd", id, #data, "下行mac包头部", (tmp:toStr(0, 24):toHex()))
+    -- log.info("ucmd", id, #data, "下行mac包", (tmp:toStr(0, #tmp):toHex()))
     tmp:seek(0)
     local result = xtspi.write_xcmd(0x10, tmp, len)
     sys.publish("UCMD_EVT", result)
+    -- log.info("ucmd", id, #data, "发送完成", result)
 end
 
 return ucmd
