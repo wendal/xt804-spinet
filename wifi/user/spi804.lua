@@ -15,7 +15,7 @@ function spi804.dft_on_data(rxbuff, len)
     -- 开始进行命令判断
     local cmd = rxbuff[4] + (rxbuff[5] << 8)
     local cmdid = rxbuff[6] + (rxbuff[7] << 8)
-    log.debug(TAG, "收到命令", cmd, cmdid)
+    -- log.debug(TAG, "收到命令", cmd, cmdid)
     if spi804.cmds[cmd] then
         pcall(spi804.cmds[cmd], rxbuff, len)
     else
@@ -38,16 +38,16 @@ end
 
 function spi804.ent(event, ptr, tlen)
     -- log.info(TAG, event, ptr, tlen)
-    if event == 0 then
-        log.info(TAG, "cmd数据", ptr, tlen)
-    end
-    if event == 1 then
-        log.info(TAG, "data数据", ptr, tlen)
-    end
+    -- if event == 0 then
+    --     log.info(TAG, "cmd数据", ptr, tlen)
+    -- end
+    -- if event == 1 then
+    --     log.info(TAG, "data数据", ptr, tlen)
+    -- end
     if tlen and tlen > 4 then
         local rxbuff = spi804.rxbuff
         spislave.read(spi804.id, ptr, rxbuff, tlen)
-        log.info(TAG, "数据读取完成,前8个字节分别是", rxbuff:toStr(0, 8):toHex())
+        -- log.info(TAG, "数据读取完成,前8个字节分别是", rxbuff:toStr(0, 8):toHex())
         local magic = rxbuff[0]
         local len = rxbuff[2] + (rxbuff[3] << 8)
         if not magic or magic ~= 0xA5 then
