@@ -19,6 +19,13 @@ function macpkg_up(tp, buff)
     -- log.info("wlan", "MAC包-->上位机", tp, buff:used())
     local len = (buff:used() + 3 + 4) & 0xfffc
     local tmp = zbuff.create(len // 1)
+    if tmp == nil then
+        buff:seek(0)
+        log.error("main", "内存炸了, 无法分配zbuff了")
+        collectgarbage("collect")
+        collectgarbage("collect")
+        return
+    end
     tmp:seek(0)
     tmp:pack("<HH", tp, buff:used())
     tmp:copy(nil, buff)
