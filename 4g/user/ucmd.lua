@@ -152,10 +152,12 @@ function ucmd.subscribe(topic, timeout)
     end
 end
 
+local mactmp = zbuff.create(2048)
 function ucmd.macpkg(id, data)
-    log.info("ucmd", "下行mac数据包", id, #data)
+    -- log.info("ucmd", "下行mac数据包", id, #data)
     local len = (#data + 4 + 3) & 0xFFFC
-    local tmp = zbuff.create(len)
+    local tmp = mactmp
+    tmp:seek(0)
     tmp:pack("<HH", id, #data)
     if type(data) == "string" then
         tmp:write(data)

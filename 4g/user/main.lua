@@ -28,8 +28,9 @@ if wdt then
 end
 
 local SPI_ID = 0
-local result = spi.setup(SPI_ID, nil, 0 , 0, 8, 25600 * 1000)
-local PIN_CS = gpio.setup(8, 1, gpio.PULLUP)
+local result = spi.setup(SPI_ID, nil, 0 , 0, 8, 25600000)
+local PIN_CS = 8
+gpio.setup(8, 1, gpio.PULLUP)
 log.info("xcmd", "SPI初始化完成", result)
 xtspi = require("xtspi")
 ucmd = require("ucmd")
@@ -58,7 +59,7 @@ function netif_write_out(id, data)
     elseif id == apindex then
         -- 分析下行数据
         data:seek(0)
-        macippkg.decode(data, true)
+        -- macippkg.decode(data, true)
         data:seek(#data)
         ucmd.macpkg(1, data)
     elseif id == socket.LWIP_GP then
@@ -175,11 +176,14 @@ sys.subscribe("WLAN_STATUS",function(status)
 end)
 
 -- 打印一下内存状态
--- sys.timerLoopStart(function()
---     log.info("lua", rtos.meminfo())
---     log.info("sys", rtos.meminfo("sys"))
---     -- log.info("psram", rtos.meminfo("psram"))
--- end, 2000)
+sys.timerLoopStart(function()
+    collectgarbage("collect")
+    collectgarbage("collect")
+    log.info("lua", rtos.meminfo())
+    log.info("sys", rtos.meminfo("sys"))
+    -- log.info("psram", rtos.meminfo("psram"))
+    collectgarbage("collect")
+end, 2000)
 
 -- 结尾总是这一句哦
 sys.run()

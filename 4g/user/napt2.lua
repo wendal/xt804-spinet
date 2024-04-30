@@ -47,7 +47,7 @@ function napt2.inet_input(buff, offset)
         -- 读取包协议
         local _, proto = buff:unpack(">H")
         if 0x0800 ~= proto then
-            log.info("napt2.内网出", "不是IP包, 忽略napt2转发", buff:toStr(offset, 12):toHex())
+            -- log.info("napt2.内网出", "不是IP包, 忽略napt2转发", buff:toStr(offset, 12):toHex())
             return
         end
     end
@@ -55,7 +55,7 @@ function napt2.inet_input(buff, offset)
     -- local ippkg_offset = buff:used()
     local ippkg = macippkg.decode_ip(buff)
     if ippkg.version ~= 4 then
-        log.info("napt2.内网出", "不是IPv4的包, 忽略", ippkg.version)
+        -- log.info("napt2.内网出", "不是IPv4的包, 忽略", ippkg.version)
         return
     end
     -- 判断一下目标地址
@@ -63,18 +63,18 @@ function napt2.inet_input(buff, offset)
     local dst_ip = buff2ip(ippkg.dst)
     if dst1 == 192 or dst1 == 0xFF or dst1 == 172 or dst1 == 127 or dst1 == 0 then
         -- TODO 更准确的内网ip判断
-        log.info("napt2.内网出", "目标地址是内网, 忽略", dst_ip)
+        -- log.info("napt2.内网出", "目标地址是内网, 忽略", dst_ip)
         return
     end
     if ippkg.prot == 1 then
         -- ICMP协议
-        log.info("napt2.内网出", "ICMP协议,目标地址", dst_ip)
+        -- log.info("napt2.内网出", "ICMP协议,目标地址", dst_ip)
     elseif ippkg.prot == 0x06 then
         -- TCP协议
-        log.info("napt2.内网出", "TCP协议,目标地址", dst_ip)
+        -- log.info("napt2.内网出", "TCP协议,目标地址", dst_ip)
     elseif ippkg.prot == 0x11 then
         -- UDP协议
-        log.info("napt2.内网出", "UDP协议,目标地址", dst_ip)
+        -- log.info("napt2.内网出", "UDP协议,目标地址", dst_ip)
     else
         log.info("napt2.内网出", "不支持的IP协议, 忽略", ippkg.prot, dst_ip)
         return
@@ -82,7 +82,7 @@ function napt2.inet_input(buff, offset)
 
     buff:seek(offset)
     if napt.rebuild(buff, true, napt2.out_adapter) then
-        log.info("napt", "IP包改造完成, 内网->外网")
+        -- log.info("napt", "IP包改造完成, 内网->外网")
         -- TODO 发送到外网
     else
         log.info("napt", "IP包改造失败, 内网->外网")
@@ -102,13 +102,13 @@ function napt2.iter_input(buff, offset)
     buff:seek(14, zbuff.SEEK_CUR)
     local ippkg = macippkg.decode_ip(buff)
     if ippkg.version ~= 4 then
-        log.info("napt2.外网入", "不是IPv4的包, 忽略", ippkg.version)
+        -- log.info("napt2.外网入", "不是IPv4的包, 忽略", ippkg.version)
         return
     end
     -- 判断一下目标地址
     -- local dst1 = ippkg.dst:byte()
     local dst_ip = buff2ip(ippkg.dst)
-    log.info("napt2.外网入", "目标地址", dst_ip)
+    -- log.info("napt2.外网入", "目标地址", dst_ip)
     -- if dst1 == 192 or dst1 == 0xFF or dst1 == 172 or dst1 == 127 or dst1 == 0 then
     --     -- TODO 更准确的内网ip判断
     --     log.info("napt2.外网入", "目标地址是内网, 忽略", dst_ip)
@@ -116,21 +116,21 @@ function napt2.iter_input(buff, offset)
     -- end
     if ippkg.prot == 1 then
         -- ICMP协议
-        log.info("napt2.外网入", "ICMP协议,目标地址", dst_ip)
+        -- log.info("napt2.外网入", "ICMP协议,目标地址", dst_ip)
     elseif ippkg.prot == 0x06 then
         -- TCP协议
-        log.info("napt2.外网入", "TCP协议,目标地址", dst_ip)
+        -- log.info("napt2.外网入", "TCP协议,目标地址", dst_ip)
     elseif ippkg.prot == 0x11 then
         -- UDP协议
-        log.info("napt2.外网入", "UDP协议,目标地址", dst_ip)
+        -- log.info("napt2.外网入", "UDP协议,目标地址", dst_ip)
     else
-        log.info("napt2.外网入", "不支持的IP协议, 忽略", ippkg.prot, dst_ip)
+        -- log.info("napt2.外网入", "不支持的IP协议, 忽略", ippkg.prot, dst_ip)
         return
     end
     buff:seek(offset)
     -- log.info("待转换的数据", buff:toStr(0, #buff):toHex())
     if napt.rebuild(buff, false, napt2.in_adapter) then
-        log.info("napt", "IP包改造完成, 外网-->内网")
+        -- log.info("napt", "IP包改造完成, 外网-->内网")
         -- 发送到内网
         -- log.info("转换后的数据", buff:toStr(0, #buff):toHex())
         buff:seek(#buff)
