@@ -182,7 +182,7 @@ sys.timerLoopStart(function()
     log.info("lua", rtos.meminfo())
     log.info("sys", rtos.meminfo("sys"))
     -- log.info("psram", rtos.meminfo("psram"))
-    collectgarbage("collect")
+    -- collectgarbage("collect")
 end, 2000)
 
 -- 结尾总是这一句哦
